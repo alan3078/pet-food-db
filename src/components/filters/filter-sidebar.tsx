@@ -84,7 +84,7 @@ export function FilterSidebar({ filters, onFilterChange }: FilterSidebarProps) {
 
       {/* Evidence Range Filter */}
       <div className="space-y-3">
-        <h3 className="font-medium">證據數量區間</h3>
+        <h3 className="font-medium">文件數量區間</h3>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{filters.evidenceRange[0]}</span>
           <span>-</span>

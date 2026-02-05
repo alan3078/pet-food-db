@@ -86,18 +86,7 @@ export const createProduct = async (productData: CreateProductDTO, supabase?: Su
 
   // 3. Create Evidence Documents
   if (evidence && evidence.length > 0) {
-    const evidenceToInsert = evidence.map(doc => ({
-      ...doc,
-      product_id: productId
-    }));
-    
-    const { error: evError } = await client
-      .from("evidence_document")
-      .insert(evidenceToInsert);
-      
-    if (evError) {
-      console.error("Error inserting evidence:", evError);
-    }
+    await addProductEvidence(productId, evidence, client);
   }
 
   return product as Product;
@@ -124,4 +113,26 @@ export const deleteProduct = async (id: number, supabase?: SupabaseClient) => {
     .eq("id", id);
 
   if (error) throw error;
+};
+
+export const addProductEvidence = async (
+  productId: number, 
+  evidence: Omit<EvidenceDocument, "id" | "product_id" | "updated_at">[],
+  supabase?: SupabaseClient
+) => {
+  const client = supabase || createClient();
+  
+  const evidenceToInsert = evidence.map(doc => ({
+    ...doc,
+    product_id: productId
+  }));
+  
+  const { error } = await client
+    .from("evidence_document")
+    .insert(evidenceToInsert);
+    
+  if (error) {
+    console.error("Error inserting evidence:", error);
+    throw error;
+  }
 };

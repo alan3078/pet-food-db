@@ -23,8 +23,8 @@ export const proteinSources = [
 ];
 
 export const sortOptions = [
-  { value: "evidence-high", label: "證據量 (由高至低)", labelEn: "Evidence (High to Low)" },
-  { value: "evidence-low", label: "證據量 (由低至高)", labelEn: "Evidence (Low to High)" },
+  { value: "evidence-high", label: "文件量 (由高至低)", labelEn: "Evidence (High to Low)" },
+  { value: "evidence-low", label: "文件量 (由低至高)", labelEn: "Evidence (Low to High)" },
   { value: "name-asc", label: "名稱 (A-Z)", labelEn: "Name (A-Z)" },
   { value: "name-desc", label: "名稱 (Z-A)", labelEn: "Name (Z-A)" },
   { value: "date-newest", label: "最新驗證", labelEn: "Newest Verified" },

@@ -70,9 +70,19 @@ export default function ProductDetailsPage() {
         {/* Header Card */}
         <Card className="p-6 border-slate-200 shadow-sm bg-white overflow-hidden">
           <div className="flex flex-col md:flex-row gap-8">
-            {/* Product Image Placeholder */}
-            <div className="w-full md:w-48 h-48 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 border border-slate-200">
-              <Package className="h-16 w-16 text-slate-300" />
+            {/* Product Image */}
+            <div className="w-full md:w-48 h-48 bg-white rounded-xl flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
+              {product.main_image_url ? (
+                <img 
+                  src={product.main_image_url} 
+                  alt={product.name_en} 
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                  <Package className="h-16 w-16 text-slate-300" />
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
@@ -101,7 +111,7 @@ export default function ProductDetailsPage() {
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100">
                       <ShieldCheck className="h-3 w-3 mr-1" />
-                      {product.evidence_count || 0} 份文件已驗證
+                      {product.evidence_count || 0} 已驗證
                     </Badge>
                     <Badge variant="outline" className="text-slate-600 border-slate-200">
                       {categories.find(c => c.value === product.category)?.label || product.category || "未分類"}
@@ -225,7 +235,7 @@ export default function ProductDetailsPage() {
                 activeTab === "evidence" ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
               )}
             >
-              證據時間軸
+              文件時間軸
               {activeTab === "evidence" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
             </button>
           </div>
@@ -266,7 +276,7 @@ export default function ProductDetailsPage() {
                   ))
                 ) : (
                    <div className="text-center py-12 text-slate-500">
-                    暫無證據文件
+                    暫無文件文件
                   </div>
                 )}
               </div>

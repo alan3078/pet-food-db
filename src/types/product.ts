@@ -18,6 +18,8 @@ export interface Product {
   crude_fiber_max: number | null;
   moisture_max: number | null;
   ingredients_text: string | null;
+  main_image_url: string | null;
+  thumbnail_url: string | null;
   updated_at: string | null;
   
   // Relations

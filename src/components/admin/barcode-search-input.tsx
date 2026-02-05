@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader2, Check, ScanBarcode } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProductByBarcode } from "@/services/open-pet-food-facts";
 import { Product } from "@/services/open-pet-food-facts/response.dto";
 
@@ -55,7 +56,7 @@ export function BarcodeSearchInput({ value, onChange, onSelect }: BarcodeSearchI
       />
       {isLoading && (
          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="animate-spin text-blue-600" size={16} />
+            <Skeleton className="h-4 w-4 rounded-full" />
          </div>
       )}
       

@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Check, ChevronRight, Info, Map, Apple, CheckCircle2, Search, Upload, FileText, X, Sparkles, Link as LinkIcon, Unlink, Plus, Trash2, Image as ImageIcon, Settings, AlertTriangle, FileUp, Package, ScanBarcode, Store, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Check, ChevronRight, Info, Map, Apple, CheckCircle2, Search, Upload, FileText, X, Sparkles, Image as ImageIcon, ScanBarcode, Store, Loader2 } from "lucide-react";
 import { BarcodeCard } from "@/components/wiki/barcode-card";
 import { useBrands } from "@/hooks/use-brands";
-import { useCreateProduct } from "@/hooks/use-products";
-import { uploadProductImage, uploadProductEvidence } from "@/services/storage";
-import { updateProduct, addProductEvidence } from "@/services/products";
+import { useProduct, useUpdateProduct } from "@/hooks/use-products";
+import { uploadProductEvidence, uploadProductImage } from "@/services/storage";
+import { addProductEvidence } from "@/services/products";
 import { compressImage } from "@/utils/image-optimization";
 
 interface EvidenceFile {
@@ -52,14 +53,17 @@ const STEPS = [
 ];
 
 import { ImageUpload } from "@/components/ui/image-upload";
-
 import { BrandLookup } from "@/components/admin/brand-lookup";
 
-export default function AddProductPage() {
+export default function EditProductPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
+  
   const [currentStep, setCurrentStep] = useState(1);
+  const { data: product, isLoading: isProductLoading } = useProduct(id);
   const { data: brands = [] } = useBrands();
-  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -77,6 +81,8 @@ export default function AddProductPage() {
     evidenceFiles: [] as EvidenceFile[], 
     ingredientText: "",
     productImage: null as File | null,
+    mainImageUrl: null as string | null,
+    thumbnailImageUrl: null as string | null,
     nutrition: {
       protein: "",
       fat: "",
@@ -84,6 +90,43 @@ export default function AddProductPage() {
       moisture: ""
     }
   });
+
+  // Load existing data
+  useEffect(() => {
+    if (product) {
+      // eslint-disable-next-line
+      setFormData(prev => ({
+        ...prev,
+        barcode: product.barcode || "",
+        name: product.name_en || "",
+        brandId: product.brand_id?.toString() || "",
+        category: product.category || "",
+        specification: product.specification || "",
+        versionLabel: product.version_label || "",
+        originText: product.origin_verbatim_text || "",
+        countryCode: product.standard_country_code || "",
+        factoryName: product.factory_name || "",
+        factoryLocation: product.factory_location || "",
+        ingredientSource: product.raw_material_origin || "",
+        ingredientText: product.ingredients_text || "",
+        mainImageUrl: product.main_image_url || null,
+        thumbnailImageUrl: product.thumbnail_url || null,
+        // Don't reset productImage file input
+        nutrition: {
+          protein: product.crude_protein_min?.toString() || "",
+          fat: product.crude_fat_min?.toString() || "",
+          fiber: product.crude_fiber_max?.toString() || "",
+          moisture: product.moisture_max?.toString() || ""
+        },
+        evidenceFiles: product.evidence_documents?.map(doc => ({
+          id: doc.id.toString(),
+          name: doc.file_name || "Unknown File",
+          path: doc.file_path || undefined,
+          status: 'success' as const
+        })) || []
+      }));
+    }
+  }, [product]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
@@ -105,117 +148,124 @@ export default function AddProductPage() {
       return;
     }
 
+    if (!id) return;
+
     setIsSubmitting(true);
 
     try {
-      // 1. Create Product (Basic Info)
-      const product = await createProductMutation.mutateAsync({
-        barcode: formData.barcode,
-        name_en: formData.name,
-        brand_id: parseInt(formData.brandId),
-        category: formData.category || null,
-        specification: formData.specification || null,
-        version_label: formData.versionLabel || null,
-        origin_verbatim_text: formData.originText || null,
-        standard_country_code: formData.countryCode || null,
-        factory_name: formData.factoryName || null,
-        factory_location: formData.factoryLocation || null,
-        raw_material_origin: formData.ingredientSource || null,
-        ingredients_text: formData.ingredientText || null,
-        crude_protein_min: formData.nutrition.protein ? parseFloat(formData.nutrition.protein) : null,
-        crude_fat_min: formData.nutrition.fat ? parseFloat(formData.nutrition.fat) : null,
-        crude_fiber_max: formData.nutrition.fiber ? parseFloat(formData.nutrition.fiber) : null,
-        moisture_max: formData.nutrition.moisture ? parseFloat(formData.nutrition.moisture) : null,
-        main_image_url: null,
-        thumbnail_url: null,
-        evidence: [] // Don't create evidence yet, we'll do it after upload
-      });
+      let mainImageUrl = formData.mainImageUrl;
+      let thumbnailImageUrl = formData.thumbnailImageUrl;
 
-      const productId = product.id;
-      let mainImageUrl = null;
-      let thumbnailUrl = null;
-
-      // 2. Upload Product Images (Main & Thumbnail)
+      // Upload Product Images (Main & Thumbnail) if new file selected
       if (formData.productImage) {
         try {
           // Upload Main Image
           const compressedMain = await compressImage(formData.productImage);
           // Sanitize filename
           const sanitizedFileName = formData.productImage.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          
-          mainImageUrl = await uploadProductImage(compressedMain, productId, "labels", "main-" + sanitizedFileName);
+
+          mainImageUrl = await uploadProductImage(compressedMain, id, "labels", "main-" + sanitizedFileName);
 
           // Upload Thumbnail Image (generated from the same file)
           const compressedThumb = await compressImage(formData.productImage, { 
             maxWidthOrHeight: 300, 
             maxSizeMB: 0.1 
           });
-          thumbnailUrl = await uploadProductImage(compressedThumb, productId, "labels", "thumb-" + sanitizedFileName);
+          thumbnailImageUrl = await uploadProductImage(compressedThumb, id, "labels", "thumb-" + sanitizedFileName);
         } catch (e) {
           console.error("Image upload failed", e);
-          alert("圖片上傳失敗，但產品資料已建立。請勿重新整理，若需重試請至編輯頁面。");
-          // Stop execution to keep user on the page
+          alert("圖片上傳失敗。請重試。");
           return;
         }
       }
 
-      // 3. Update Product with Image URLs
-      if (mainImageUrl || thumbnailUrl) {
-        await updateProduct(productId, {
+      await updateProductMutation.mutateAsync({
+        id: parseInt(id),
+        data: {
+          barcode: formData.barcode,
+          name_en: formData.name,
+          brand_id: parseInt(formData.brandId),
+          category: formData.category || null,
+          specification: formData.specification || null,
+          version_label: formData.versionLabel || null,
+          origin_verbatim_text: formData.originText || null,
+          standard_country_code: formData.countryCode || null,
+          factory_name: formData.factoryName || null,
+          factory_location: formData.factoryLocation || null,
+          raw_material_origin: formData.ingredientSource || null,
+          ingredients_text: formData.ingredientText || null,
           main_image_url: mainImageUrl,
-          thumbnail_url: thumbnailUrl
-        });
-      }
-
-      // 5. Upload Evidence Files and Create Records
-      const uploadedEvidence = [];
-      for (const fileData of formData.evidenceFiles) {
-        if (fileData.file) {
-          try {
-            // Compress if it's an image
-            const fileToUpload = await compressImage(fileData.file);
-            
-            // Update status to uploading (visually not reflected since we navigate away, but good for logic)
-            const path = await uploadProductEvidence(fileToUpload, productId, fileData.file.name);
-            uploadedEvidence.push({
-              file_name: fileData.name,
-              file_path: path,
-              doc_type: "document"
-            });
-          } catch (e) {
-            console.error(`Evidence upload failed for ${fileData.name}`, e);
-          }
+          thumbnail_url: thumbnailImageUrl,
+          crude_protein_min: formData.nutrition.protein ? parseFloat(formData.nutrition.protein) : null,
+          crude_fat_min: formData.nutrition.fat ? parseFloat(formData.nutrition.fat) : null,
+          crude_fiber_max: formData.nutrition.fiber ? parseFloat(formData.nutrition.fiber) : null,
+          moisture_max: formData.nutrition.moisture ? parseFloat(formData.nutrition.moisture) : null,
         }
-      }
-
-      if (uploadedEvidence.length > 0) {
-        await addProductEvidence(productId, uploadedEvidence);
-      }
+      });
 
       router.push("/admin/products");
-
     } catch (error: unknown) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      alert("建立失敗：" + errorMessage);
+      alert("更新失敗：" + errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleEvidenceUpload = (file: File) => {
+  const handleEvidenceUpload = async (file: File) => {
     if (file) {
+      if (!formData.barcode) {
+        alert("請先輸入產品條碼 (Barcode)");
+        return;
+      }
+
       const newFile: EvidenceFile = {
         id: Math.random().toString(36).substring(7),
         file,
         name: file.name,
-        status: 'pending'
+        status: 'uploading'
       };
 
       setFormData(prev => ({
         ...prev,
         evidenceFiles: [...prev.evidenceFiles, newFile]
       }));
+
+      // Start upload immediately
+      try {
+        // Compress if it's an image
+        const fileToUpload = await compressImage(file);
+        
+        const uploadedPath = await uploadProductEvidence(fileToUpload, id, file.name);
+
+        // Create DB record immediately
+        await addProductEvidence(parseInt(id), [{
+          file_name: file.name,
+          file_path: uploadedPath,
+          doc_type: "document"
+        }]);
+        
+        setFormData(prev => ({
+          ...prev,
+          evidenceFiles: prev.evidenceFiles.map(f => 
+            f.id === newFile.id 
+              ? { ...f, status: 'success', path: uploadedPath } 
+              : f
+          )
+        }));
+      } catch (error) {
+        console.error("Upload failed:", error);
+        setFormData(prev => ({
+          ...prev,
+          evidenceFiles: prev.evidenceFiles.map(f => 
+            f.id === newFile.id 
+              ? { ...f, status: 'error' } 
+              : f
+          )
+        }));
+        alert("上傳失敗");
+      }
     }
   };
 
@@ -226,18 +276,89 @@ export default function AddProductPage() {
     }));
   };
 
+  if (isProductLoading) {
+    return (
+      <div className="max-w-5xl mx-auto pb-20">
+        {/* Breadcrumbs Skeleton */}
+        <div className="flex items-center gap-2 mb-6">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+
+        {/* Header Skeleton */}
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+
+        {/* Stepper Skeleton */}
+        <div className="relative flex justify-between items-start mb-12 px-10">
+          <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-200 -z-10" />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex flex-col items-center gap-2">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+
+        {/* Form Content Skeleton */}
+        <Card className="p-8 shadow-sm border-gray-200 bg-white mb-6 space-y-10">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 pl-3">
+              <Skeleton className="h-7 w-48" />
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 flex-1" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-40 w-full rounded-lg" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-40 w-full rounded-lg" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Footer Actions Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-11 w-32" />
+          <div className="flex gap-4">
+            <Skeleton className="h-11 w-32" />
+            <Skeleton className="h-11 w-40" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto pb-20">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
         <Link href="/admin/products" className="hover:text-blue-600">產品管理</Link>
         <ChevronRight size={14} />
-        <span className="text-gray-900 font-medium">新增產品資料</span>
+        <span className="text-gray-900 font-medium">編輯產品資料</span>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">新增產品資料</h1>
-        <p className="text-gray-500">請按步驟填寫產品詳細資訊。標記 <span className="text-red-500">*</span> 為必填項目。</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">編輯產品資料</h1>
+        <p className="text-gray-500">請按步驟編輯產品詳細資訊。標記 <span className="text-red-500">*</span> 為必填項目。</p>
       </div>
 
       {/* Stepper */}
@@ -313,6 +434,19 @@ export default function AddProductPage() {
                   <p className="text-xs text-gray-400">請輸入產品包裝上的原始英文名稱</p>
                 </div>
 
+                {/* Product Image Upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    產品圖片 (Product Image)
+                  </label>
+                  <ImageUpload 
+                    value={formData.productImage || formData.mainImageUrl || formData.thumbnailImageUrl}
+                    onChange={(file) => setFormData({...formData, productImage: file})}
+                    onRemove={() => setFormData({...formData, productImage: null, mainImageUrl: null, thumbnailImageUrl: null})}
+                  />
+                  <p className="text-xs text-gray-400 mt-2">上傳新圖片將自動產生新的主圖與縮圖，並覆蓋原有圖片</p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
@@ -366,20 +500,6 @@ export default function AddProductPage() {
                     </Select>
                   </div>
                 </div>
-
-                {/* Product Image Upload */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    產品圖片 (Product Image)
-                  </label>
-                  <ImageUpload 
-                    value={formData.productImage}
-                    onChange={(file) => setFormData({...formData, productImage: file})}
-                    onRemove={() => setFormData({...formData, productImage: null})}
-                  />
-                  <p className="text-xs text-gray-400">系統將自動產生主圖與縮圖</p>
-                </div>
-
               </div>
             </div>
 
@@ -500,7 +620,7 @@ export default function AddProductPage() {
                         <p className="text-xs text-gray-400">
                           {file.status === 'uploading' ? 'Uploading...' : 
                            file.status === 'success' ? 'Uploaded' : 
-                           file.status === 'error' ? 'Failed' : 'Pending (Upload on Submit)'}
+                           file.status === 'error' ? 'Failed' : 'Pending'}
                         </p>
                       </div>
                     </div>
@@ -655,7 +775,9 @@ export default function AddProductPage() {
                 <div className="bg-white border border-gray-200 rounded-xl p-6 flex gap-6">
                   <div className="w-32 h-32 bg-gray-100 rounded-lg shrink-0 flex items-center justify-center overflow-hidden">
                      {formData.productImage ? (
-                        <img src={URL.createObjectURL(formData.productImage)} alt="Main" className="w-full h-full object-cover" />
+                        <img src={URL.createObjectURL(formData.productImage)} alt="Preview" className="w-full h-full object-cover" />
+                     ) : (formData.thumbnailImageUrl || formData.mainImageUrl) ? (
+                        <img src={formData.thumbnailImageUrl || formData.mainImageUrl || ""} alt="Preview" className="w-full h-full object-cover" />
                      ) : (
                         <ImageIcon className="text-gray-300" size={48} />
                      )}
@@ -718,6 +840,9 @@ export default function AddProductPage() {
         </Button>
         
         <div className="flex gap-4">
+          <Button variant="outline" className="h-11 px-6 text-blue-600 border-blue-200 hover:bg-blue-50" disabled={isSubmitting}>
+            暫存草稿
+          </Button>
           <Button 
             className={`h-11 px-8 shadow-md transition-colors ${
               currentStep === STEPS.length 

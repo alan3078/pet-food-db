@@ -74,8 +74,16 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardContent className="p-0 flex flex-col md:flex-row">
         {/* Left Sidebar - Brand & Image - Slimmer */}
         <div className="w-full md:w-40 bg-slate-50/50 border-b md:border-b-0 md:border-r border-slate-100 p-4 flex flex-col items-center justify-center text-center shrink-0">
-          <div className="h-20 w-20 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-300">
-            <Package className="h-8 w-8 text-slate-300" />
+          <div className="h-20 w-20 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+            {product.thumbnail_url ? (
+              <img 
+                src={product.thumbnail_url} 
+                alt={product.name_en} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Package className="h-8 w-8 text-slate-300" />
+            )}
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Brand</span>
@@ -112,7 +120,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <div className="shrink-0 flex items-center gap-2">
                <Badge variant="outline" className="bg-blue-50/50 text-blue-700 border-blue-100 px-3 py-1 rounded-full flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="text-xs font-bold">{product.evidence_count || 0} 份文件</span>
+                  <span className="text-xs font-bold">{product.evidence_count || 0} </span>
                </Badge>
             </div>
           </div>
@@ -155,7 +163,7 @@ export function ProductCard({ product }: ProductCardProps) {
              >
                 <div className="flex items-center gap-2 text-slate-500 group-hover/timeline:text-slate-800 transition-colors">
                   <History className="h-4 w-4" />
-                  <span className="text-xs font-bold">證據時間軸 ({timelineItems.length})</span>
+                  <span className="text-xs font-bold">文件時間軸 ({timelineItems.length})</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-slate-400">上次更新: {product.updated_at ? new Date(product.updated_at).toLocaleDateString() : "-"}</span>
@@ -183,7 +191,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     <div className="absolute left-[13.5px] top-2 bottom-0 w-px bg-slate-200" />
                     
                     {timelineItems.length > 0 ? timelineItems.map((item, index) => (
-                      <div key={item.id} className="relative flex gap-4 mb-6 last:mb-0 group/item">
+                      <div key={`${item.id}-${index}`} className="relative flex gap-4 mb-6 last:mb-0 group/item">
                         {/* Timeline Dot */}
                         <div className="relative z-10 flex-none w-7 flex justify-center pt-1.5">
                            <div className="h-2.5 w-2.5 rounded-full bg-white border-[2.5px] border-emerald-500 shadow-sm group-hover/item:scale-110 transition-transform" />
@@ -210,7 +218,7 @@ export function ProductCard({ product }: ProductCardProps) {
                       </div>
                     )) : (
                       <div className="text-center text-slate-400 text-xs py-2">
-                        暫無證據文件
+                        暫無文件文件
                       </div>
                     )}
                  </div>
@@ -218,7 +226,7 @@ export function ProductCard({ product }: ProductCardProps) {
                  <div className="mt-2 pt-3 border-t border-slate-100 flex justify-center">
                     <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-blue-600 h-7" onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/products/${product.barcode}`);
+                      router.push(`/products/${product.id}`);
                     }}>
                       查看完整履歷
                     </Button>

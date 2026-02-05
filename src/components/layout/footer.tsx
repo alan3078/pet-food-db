@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2025 寵物零食數據庫 · 保留所有權利。
+            © {new Date().getFullYear()} PFDB · 保留所有權利。
           </p>
           <nav className="flex gap-6">
             <Link

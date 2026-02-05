@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { Store, Plane, ShieldCheck, Package, ScanBarcode, BookOpen } from "lucide-react";
 import { BarcodeCard } from "@/components/wiki/barcode-card";
 import { Ean13Decoder } from "@/components/wiki/ean13-decoder";
@@ -9,13 +10,21 @@ export default function BarcodeWikiPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-8">
+          <Breadcrumbs
+            items={[
+              { label: "首頁", href: "/" },
+              { label: "寵物糧條碼百科" },
+            ]}
+          />
+        </div>
+
         <div className="space-y-4 mb-12">
           <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 gap-1">
             <BookOpen size={14} />
             知識百科
           </Badge>
-          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">寵物糧條碼百科</h1>
           <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
             深入了解包裝上的黑白線條，掌握 4 大關鍵條碼類別，確保毛孩的每一口糧食都安全、可追溯。
           </p>

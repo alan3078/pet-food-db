@@ -62,7 +62,7 @@ export function AdminSearch() {
                 key={product.barcode}
                 value={`${product.name_en} ${product.brand?.name || ""} ${product.origin_verbatim_text || ""} ${product.category || ""}`}
                 onSelect={() => {
-                  runCommand(() => router.push(`/admin/products/${product.barcode}`))
+                  runCommand(() => router.push(`/admin/products/${product.id}`))
                 }}
               >
                 <div className="flex flex-col gap-1 w-full">

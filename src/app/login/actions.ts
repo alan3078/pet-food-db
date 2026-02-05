@@ -15,6 +15,14 @@ const signupSchema = z.object({
   password: z.string().min(6),
   role: z.enum(["user", "admin"]).default("user"),
   signupCode: z.string().optional(),
+}).refine((data) => {
+  if (data.role === "admin") {
+    return !!data.signupCode;
+  }
+  return true;
+}, {
+  message: "管理員註冊必須輸入註冊碼",
+  path: ["signupCode"],
 });
 
 export async function login(formData: FormData) {

@@ -37,7 +37,7 @@ export function ProductList({
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">最高證據數量</h2>
+          <h2 className="text-xl font-semibold">最高文件數量</h2>
           <p className="text-sm text-muted-foreground">
             顯示前 {totalCount} 項已驗證產品
           </p>

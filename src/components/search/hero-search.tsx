@@ -15,12 +15,14 @@ interface HeroSearchProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   onSearch: () => void;
+  showScopeSelector?: boolean;
 }
 
 export function HeroSearch({
   searchQuery,
   onSearchChange,
   onSearch,
+  showScopeSelector = true,
 }: HeroSearchProps) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/50 to-background py-24">
@@ -45,19 +47,23 @@ export function HeroSearch({
         </p> */}
 
         <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border bg-background p-2 shadow-lg ring-1 ring-black/5">
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[140px] border-0 bg-transparent pl-4 text-base shadow-none focus:ring-0">
-              <SelectValue placeholder="全部範圍" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部範圍</SelectItem>
-              <SelectItem value="brand">品牌</SelectItem>
-              <SelectItem value="product">產品名稱</SelectItem>
-              <SelectItem value="ingredient">成分</SelectItem>
-            </SelectContent>
-          </Select>
+          {showScopeSelector && (
+            <>
+              <Select defaultValue="all">
+                <SelectTrigger className="w-[140px] border-0 bg-transparent pl-4 text-base shadow-none focus:ring-0">
+                  <SelectValue placeholder="全部範圍" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部範圍</SelectItem>
+                  <SelectItem value="brand">品牌</SelectItem>
+                  <SelectItem value="product">產品名稱</SelectItem>
+                  <SelectItem value="ingredient">成分</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <div className="h-8 w-px bg-border" />
+              <div className="h-8 w-px bg-border" />
+            </>
+          )}
 
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
