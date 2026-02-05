@@ -2,6 +2,7 @@ export interface Brand {
   id: number;
   name: string;
   country_code: string;
+  parent_company?: string;
   updated_at?: string;
 }
 
@@ -13,4 +14,4 @@ export interface License {
   updated_at?: string;
 }
 
-export type SortOption = "name-asc" | "name-desc" | "date-newest" | "date-oldest";
+export type BrandSortOption = "name-asc" | "name-desc" | "date-newest" | "date-oldest";

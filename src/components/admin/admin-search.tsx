@@ -12,13 +12,14 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { mockProducts } from "@/data/products"
+import { useProducts } from "@/hooks/use-products"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 export function AdminSearch() {
   const [open, setOpen] = React.useState(false)
   const router = useRouter()
+  const { data: products = [] } = useProducts()
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -56,29 +57,27 @@ export function AdminSearch() {
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Products">
-            {mockProducts.map((product) => (
+            {products.map((product) => (
               <CommandItem
-                key={product.id}
-                value={`${product.name} ${product.brand} ${product.ingredientOrigin} ${product.category} ${product.proteinSource?.join(" ")}`}
+                key={product.barcode}
+                value={`${product.name_en} ${product.brand?.name || ""} ${product.origin_verbatim_text || ""} ${product.category || ""}`}
                 onSelect={() => {
-                  runCommand(() => router.push(`/admin/products`)) // Redirect to products list for now since detail page might not exist
+                  runCommand(() => router.push(`/admin/products/${product.barcode}`))
                 }}
               >
                 <div className="flex flex-col gap-1 w-full">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{product.name}</span>
-                    <Badge variant="outline" className="text-xs">{product.brand}</Badge>
+                    <span className="font-medium">{product.name_en}</span>
+                    <Badge variant="outline" className="text-xs">{product.brand?.name || "Unknown"}</Badge>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{product.ingredientOrigin}</span>
-                    <span>•</span>
-                    <span>{product.category}</span>
-                     {product.proteinSource && product.proteinSource.length > 0 && (
-                        <>
-                            <span>•</span>
-                            <span>{product.proteinSource.join(", ")}</span>
-                        </>
-                     )}
+                    {product.origin_verbatim_text && <span>{product.origin_verbatim_text}</span>}
+                    {product.category && (
+                      <>
+                        <span>•</span>
+                        <span>{product.category}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </CommandItem>

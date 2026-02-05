@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Product } from "@/types";
+import { Product } from "@/types/product";
 import { 
   Package, 
   CheckCircle2,
@@ -22,8 +22,8 @@ interface ProductCardProps {
   product: Product;
 }
 
-const getOriginDisplay = (location: string) => {
-  if (location.includes("Unknown") || location.includes("Claimed")) {
+const getOriginDisplay = (location: string | null) => {
+  if (!location || location.includes("Unknown") || location.includes("Claimed")) {
     return {
       className: "text-slate-700",
       icon: <HelpCircle className="mr-1.5 h-4 w-4 text-slate-400" />,
@@ -37,20 +37,21 @@ const getOriginDisplay = (location: string) => {
   };
 };
 
-// Mock timeline data for display
-const mockTimeline = [
-  { id: 1, title: "化驗報告 (Lab Report)", date: "2023-10-15", action: "下載 PDF", icon: <Download className="h-3 w-3 mr-1" /> },
-  { id: 2, title: "包裝標籤照片", date: "2023-09-01", action: "查看", icon: <Eye className="h-3 w-3 mr-1" /> },
-  { id: 3, title: "廠商回覆信件", date: "2023-08-20", action: null, icon: null },
-];
-
 export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   
-  const ingredientOriginDisplay = getOriginDisplay(product.ingredientOrigin);
-  const productionOriginDisplay = getOriginDisplay(product.productionLocation);
-  const packagingOriginDisplay = getOriginDisplay(product.packagingLocation);
+  const ingredientOriginDisplay = getOriginDisplay(product.raw_material_origin);
+  const productionOriginDisplay = getOriginDisplay(product.factory_location);
+  
+  // Map real evidence documents to timeline if available, otherwise empty array (removed mock data)
+  const timelineItems = product.evidence_documents?.map(doc => ({
+    id: doc.id,
+    title: doc.file_name || "Document",
+    date: doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : "",
+    action: "下載",
+    icon: <Download className="h-3 w-3 mr-1" />
+  })) || [];
 
   const handleCardClick = () => {
     router.push(`/products/${product.id}`);
@@ -78,7 +79,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Brand</span>
-            <h4 className="font-bold text-slate-700 text-sm">{product.brand}</h4>
+            <h4 className="font-bold text-slate-700 text-sm">{product.brand?.name || "Unknown"}</h4>
           </div>
         </div>
 
@@ -88,16 +89,30 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-5">
             <div className="space-y-1.5">
               <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                {product.name}
+                {product.name_en}
               </h3>
+              {(product.specification || product.version_label) && (
+                <div className="flex gap-2">
+                  {product.specification && (
+                    <Badge variant="outline" className="text-xs font-normal text-slate-500">
+                      {product.specification}
+                    </Badge>
+                  )}
+                  {product.version_label && (
+                    <Badge variant="outline" className="text-xs font-normal text-slate-500">
+                      {product.version_label}
+                    </Badge>
+                  )}
+                </div>
+              )}
               <p className="text-slate-500 text-sm line-clamp-2">
-                {product.description}
+                {product.origin_verbatim_text || "No description available."}
               </p>
             </div>
             <div className="shrink-0 flex items-center gap-2">
                <Badge variant="outline" className="bg-blue-50/50 text-blue-700 border-blue-100 px-3 py-1 rounded-full flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="text-xs font-bold">{product.evidenceCount} 份文件</span>
+                  <span className="text-xs font-bold">{product.evidence_count || 0} 份文件</span>
                </Badge>
             </div>
           </div>
@@ -108,7 +123,7 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">原料產地</span>
               <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-1">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
-                  {product.ingredientOrigin}
+                  {product.raw_material_origin || "Unknown"}
                 </div>
                 {ingredientOriginDisplay.badge}
               </div>
@@ -117,18 +132,17 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">生產地</span>
               <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-1">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
-                  {product.productionLocation}
+                  {product.factory_location || "Unknown"}
                 </div>
                 {productionOriginDisplay.badge}
               </div>
             </div>
             <div className="space-y-1 text-center sm:text-left">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">包裝地</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">類別</span>
               <div className="flex flex-col sm:flex-row items-center sm:items-baseline gap-1">
                 <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
-                  {product.packagingLocation}
+                  {product.category || "-"}
                 </div>
-                {packagingOriginDisplay.badge}
               </div>
             </div>
           </div>
@@ -141,10 +155,10 @@ export function ProductCard({ product }: ProductCardProps) {
              >
                 <div className="flex items-center gap-2 text-slate-500 group-hover/timeline:text-slate-800 transition-colors">
                   <History className="h-4 w-4" />
-                  <span className="text-xs font-bold">證據時間軸 ({mockTimeline.length})</span>
+                  <span className="text-xs font-bold">證據時間軸 ({timelineItems.length})</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-slate-400">上次更新: {product.lastVerifiedDate}</span>
+                  <span className="text-[10px] text-slate-400">上次更新: {product.updated_at ? new Date(product.updated_at).toLocaleDateString() : "-"}</span>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full hover:bg-slate-100">
                     {isTimelineExpanded ? (
                       <ChevronUp className="h-4 w-4 text-slate-400" />
@@ -168,7 +182,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     {/* Vertical connecting line */}
                     <div className="absolute left-[13.5px] top-2 bottom-0 w-px bg-slate-200" />
                     
-                    {mockTimeline.map((item, index) => (
+                    {timelineItems.length > 0 ? timelineItems.map((item, index) => (
                       <div key={item.id} className="relative flex gap-4 mb-6 last:mb-0 group/item">
                         {/* Timeline Dot */}
                         <div className="relative z-10 flex-none w-7 flex justify-center pt-1.5">
@@ -194,17 +208,19 @@ export function ProductCard({ product }: ProductCardProps) {
                           )}
                         </div>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="text-center text-slate-400 text-xs py-2">
+                        暫無證據文件
+                      </div>
+                    )}
                  </div>
                  
-                 <div className="mt-2 pl-11">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-xs h-8 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
-                      onClick={handleActionClick}
-                    >
-                      查看完整檔案
+                 <div className="mt-2 pt-3 border-t border-slate-100 flex justify-center">
+                    <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-blue-600 h-7" onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/products/${product.barcode}`);
+                    }}>
+                      查看完整履歷
                     </Button>
                  </div>
                </div>

@@ -142,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Footer */}
         <footer className='mt-auto px-6 py-4 text-xs text-gray-400 flex items-center justify-between border-t'>
           <div className='flex gap-4'>
-            <span>© {new Date().getFullYear.toString()}寵物食品透明度數據庫</span>
+            <span>© {new Date().getFullYear()} 寵物食品透明度數據庫</span>
             <span>•</span>
             <span>系統說明文件</span>
             <span>•</span>

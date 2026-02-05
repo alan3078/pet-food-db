@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Filter } from "lucide-react";
 
 import { HeroSearch } from "@/components/search";
 import { FilterSidebar } from "@/components/filters";
 import { ProductList } from "@/components/products";
-import { mockProducts } from "@/data/products";
-import { FilterState, Product, SortOption } from "@/types";
+import { useProducts } from "@/hooks/use-products";
+import { FilterState, SortOption } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,13 +16,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-// Simulate API call with mock data
-async function fetchProducts(): Promise<Product[]> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return mockProducts;
-}
 
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,10 +30,7 @@ export function HomePage() {
     searchQuery: "",
   });
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
-  });
+  const { data: products = [], isLoading } = useProducts();
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
@@ -52,9 +41,9 @@ export function HomePage() {
       const query = appliedSearch.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.brand.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query)
+          p.name_en?.toLowerCase().includes(query) ||
+          p.brand?.name?.toLowerCase().includes(query) ||
+          p.origin_verbatim_text?.toLowerCase().includes(query)
       );
     }
 
@@ -66,8 +55,8 @@ export function HomePage() {
     // Apply evidence range filter
     result = result.filter(
       (p) =>
-        p.evidenceCount >= filters.evidenceRange[0] &&
-        p.evidenceCount <= filters.evidenceRange[1]
+        (p.evidence_count || 0) >= filters.evidenceRange[0] &&
+        (p.evidence_count || 0) <= filters.evidenceRange[1]
     );
 
     // Apply country filter
@@ -75,9 +64,8 @@ export function HomePage() {
       result = result.filter((p) =>
         filters.countries.some(
           (c) =>
-            p.ingredientOrigin.includes(c) ||
-            p.productionLocation.includes(c) ||
-            p.packagingLocation.includes(c)
+            p.raw_material_origin?.includes(c) ||
+            p.factory_location?.includes(c)
         )
       );
     }
@@ -85,36 +73,41 @@ export function HomePage() {
     // Apply protein source filter
     if (filters.proteinSources.length > 0) {
       result = result.filter((p) =>
-        p.proteinSource.some((ps) => filters.proteinSources.includes(ps))
+        // Check if any of the product ingredients match the selected protein sources
+        // If product_ingredients is available, use it. Otherwise fall back to ingredients_text check
+        p.product_ingredients?.some((ing) => 
+          filters.proteinSources.some(source => ing.ingredient_name.includes(source))
+        ) || 
+        (p.ingredients_text && filters.proteinSources.some(source => p.ingredients_text?.includes(source)))
       );
     }
 
     // Apply sorting
     switch (sortBy) {
       case "evidence-high":
-        result.sort((a, b) => b.evidenceCount - a.evidenceCount);
+        result.sort((a, b) => (b.evidence_count || 0) - (a.evidence_count || 0));
         break;
       case "evidence-low":
-        result.sort((a, b) => a.evidenceCount - b.evidenceCount);
+        result.sort((a, b) => (a.evidence_count || 0) - (b.evidence_count || 0));
         break;
       case "name-asc":
-        result.sort((a, b) => a.name.localeCompare(b.name));
+        result.sort((a, b) => (a.name_en || "").localeCompare(b.name_en || ""));
         break;
       case "name-desc":
-        result.sort((a, b) => b.name.localeCompare(a.name));
+        result.sort((a, b) => (b.name_en || "").localeCompare(a.name_en || ""));
         break;
       case "date-newest":
         result.sort(
           (a, b) =>
-            new Date(b.lastVerifiedDate).getTime() -
-            new Date(a.lastVerifiedDate).getTime()
+            new Date(b.updated_at || 0).getTime() -
+            new Date(a.updated_at || 0).getTime()
         );
         break;
       case "date-oldest":
         result.sort(
           (a, b) =>
-            new Date(a.lastVerifiedDate).getTime() -
-            new Date(b.lastVerifiedDate).getTime()
+            new Date(a.updated_at || 0).getTime() -
+            new Date(b.updated_at || 0).getTime()
         );
         break;
     }

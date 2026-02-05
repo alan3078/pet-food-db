@@ -1,6 +1,9 @@
 import { BrandForm } from "@/components/admin/brand-form";
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
+import { getBrand } from "@/services/brands";
+import { getLicensesByBrandId } from "@/services/licenses";
+import { License } from "@/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,27 +20,20 @@ export default async function EditBrandPage({ params }: PageProps) {
       notFound();
   }
 
-  const { data: brand, error: brandError } = await supabase
-    .from("brand")
-    .select("*")
-    .eq("id", brandId)
-    .single();
-
-  if (brandError || !brand) {
-    console.error("Error fetching brand:", brandError);
+  let brand;
+  try {
+    brand = await getBrand(brandId, supabase);
+  } catch (error) {
+    console.error("Error fetching brand:", error);
     notFound();
   }
 
-  const { data: licenses, error: licenseError } = await supabase
-    .from("license")
-    .select("*")
-    .eq("brand_id", brandId)
-    .order("prefix", { ascending: true });
-
-  if (licenseError) {
-    console.error("Error fetching licenses:", licenseError);
-    // We don't 404 here, just pass empty licenses or log error
+  let licenses: License[] = [];
+  try {
+    licenses = await getLicensesByBrandId(brandId, supabase);
+  } catch (error) {
+    console.error("Error fetching licenses:", error);
   }
 
-  return <BrandForm initialData={brand} initialLicenses={licenses || []} isEditMode />;
+  return <BrandForm initialData={brand} initialLicenses={licenses} isEditMode />;
 }

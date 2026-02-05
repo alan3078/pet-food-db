@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChevronRight, Save, X, AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
 import { Brand, License } from "@/types";
-import { createBrand, updateBrand } from "@/services/brands";
-import { createLicense, deleteLicense } from "@/services/licenses";
+import { useCreateBrand, useUpdateBrand } from "@/hooks/use-brands";
+import { useCreateLicense, useDeleteLicense } from "@/hooks/use-licenses";
 import {
   Select,
   SelectContent,
@@ -28,11 +28,24 @@ interface BrandFormProps {
 
 export function BrandForm({ initialData, initialLicenses = [], isEditMode = false }: BrandFormProps) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // React Query Mutations
+  const createBrandMutation = useCreateBrand();
+  const updateBrandMutation = useUpdateBrand();
+  const createLicenseMutation = useCreateLicense();
+  const deleteLicenseMutation = useDeleteLicense();
+
+  const isSubmitting = 
+    createBrandMutation.isPending || 
+    updateBrandMutation.isPending || 
+    createLicenseMutation.isPending || 
+    deleteLicenseMutation.isPending;
+
   const [formData, setFormData] = useState<Partial<Brand>>({
     name: initialData?.name || "",
     country_code: initialData?.country_code || "",
+    parent_company: initialData?.parent_company || "",
   });
 
   // License state
@@ -79,7 +92,6 @@ export function BrandForm({ initialData, initialLicenses = [], isEditMode = fals
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError(null);
 
     try {
@@ -88,17 +100,22 @@ export function BrandForm({ initialData, initialLicenses = [], isEditMode = fals
       if (isEditMode) {
         if (!initialData?.id) throw new Error("Brand ID is required for editing");
         brandId = initialData.id;
-        await updateBrand(brandId, {
+        await updateBrandMutation.mutateAsync({
+          id: brandId,
+          data: {
             name: formData.name,
-            country_code: formData.country_code
+            country_code: formData.country_code,
+            parent_company: formData.parent_company,
+          }
         });
       } else {
         if (!formData.name || !formData.country_code) {
             throw new Error("請填寫所有必填欄位");
         }
-        const newBrand = await createBrand({
+        const newBrand = await createBrandMutation.mutateAsync({
           name: formData.name,
           country_code: formData.country_code,
+          parent_company: formData.parent_company,
         });
         brandId = newBrand.id;
       }
@@ -116,22 +133,24 @@ export function BrandForm({ initialData, initialLicenses = [], isEditMode = fals
       const toDelete = initialLicenses.filter(l => !currentPrefixes.includes(l.prefix));
 
       await Promise.all([
-        ...toAdd.map(l => createLicense({
+        ...toAdd.map(l => createLicenseMutation.mutateAsync({
           prefix: l.prefix!,
           brand_id: brandId,
           source: l.source || "",
           source_date: l.source_date || new Date().toISOString().split('T')[0]
         })),
-        ...toDelete.map(l => deleteLicense(l.prefix))
+        ...toDelete.map(l => deleteLicenseMutation.mutateAsync(l.prefix!))
       ]);
 
       router.push("/admin/brands");
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "發生錯誤，請稍後再試");
-    } finally {
-      setIsSubmitting(false);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("發生錯誤，請稍後再試");
+      }
     }
   };
 
@@ -186,6 +205,17 @@ export function BrandForm({ initialData, initialLicenses = [], isEditMode = fals
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="parent_company">母公司 (Parent Company)</Label>
+                <Input
+                  id="parent_company"
+                  name="parent_company"
+                  placeholder="例如: Mars, Inc."
+                  value={formData.parent_company || ""}
+                  onChange={handleChange}
+                />
               </div>
             </div>
           </CardContent>

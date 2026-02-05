@@ -1,4 +1,4 @@
-export interface Root {
+export interface OpenPetFoodFactsResponse {
   code: string
   product: Product
   status: number

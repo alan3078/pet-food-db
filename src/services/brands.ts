@@ -1,9 +1,10 @@
 import { createClient } from "@/utils/supabase/client";
 import { Brand } from "@/types";
+import { SupabaseClient } from "@supabase/supabase-js";
 
-export const getBrands = async () => {
-  const supabase = createClient();
-  const { data, error } = await supabase
+export const getBrands = async (supabase?: SupabaseClient) => {
+  const client = supabase || createClient();
+  const { data, error } = await client
     .from("brand")
     .select("*")
     .order("updated_at", { ascending: false });
@@ -12,9 +13,9 @@ export const getBrands = async () => {
   return data as Brand[];
 };
 
-export const getBrand = async (id: number) => {
-  const supabase = createClient();
-  const { data, error } = await supabase
+export const getBrand = async (id: number, supabase?: SupabaseClient) => {
+  const client = supabase || createClient();
+  const { data, error } = await client
     .from("brand")
     .select("*")
     .eq("id", id)
@@ -24,9 +25,9 @@ export const getBrand = async (id: number) => {
   return data as Brand;
 };
 
-export const createBrand = async (brand: Omit<Brand, "id" | "updated_at">) => {
-  const supabase = createClient();
-  const { data, error } = await supabase
+export const createBrand = async (brand: Omit<Brand, "id" | "updated_at">, supabase?: SupabaseClient) => {
+  const client = supabase || createClient();
+  const { data, error } = await client
     .from("brand")
     .insert(brand)
     .select()
@@ -36,9 +37,9 @@ export const createBrand = async (brand: Omit<Brand, "id" | "updated_at">) => {
   return data as Brand;
 };
 
-export const updateBrand = async (id: number, brand: Partial<Brand>) => {
-  const supabase = createClient();
-  const { data, error } = await supabase
+export const updateBrand = async (id: number, brand: Partial<Brand>, supabase?: SupabaseClient) => {
+  const client = supabase || createClient();
+  const { data, error } = await client
     .from("brand")
     .update(brand)
     .eq("id", id)
@@ -49,9 +50,9 @@ export const updateBrand = async (id: number, brand: Partial<Brand>) => {
   return data as Brand;
 };
 
-export const deleteBrand = async (id: number) => {
-  const supabase = createClient();
-  const { error } = await supabase
+export const deleteBrand = async (id: number, supabase?: SupabaseClient) => {
+  const client = supabase || createClient();
+  const { error } = await client
     .from("brand")
     .delete()
     .eq("id", id);

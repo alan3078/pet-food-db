@@ -26,6 +26,7 @@ const formSchema = z.object({
     message: "密碼必須至少包含 6 個字符",
   }),
   role: z.enum(["user", "admin"]).optional(),
+  signupCode: z.string().optional(),
 });
 
 interface LoginFormProps {
@@ -55,10 +56,17 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     try {
       let result;
       if (mode === 'signup') {
+        if (role === 'admin' && !values.signupCode) {
+          form.setError("signupCode", { message: "管理員註冊必須輸入註冊碼" });
+          setIsLoading(false);
+          return;
+        }
+
         result = await emailSignup({
           email: values.email,
           password: values.password,
-          role: role
+          role: role,
+          signupCode: values.signupCode,
         });
       } else {
         result = await emailLogin({
@@ -167,6 +175,23 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               </FormItem>
             )}
           />
+          
+          {mode === 'signup' && role === 'admin' && (
+            <FormField
+              control={form.control}
+              name="signupCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>管理員註冊碼</FormLabel>
+                  <FormControl>
+                    <Input placeholder="請輸入註冊碼" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           {error && <div className="text-sm text-red-500 font-medium">{error}</div>}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

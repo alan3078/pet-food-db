@@ -18,77 +18,31 @@ import {
   ExternalLink,
   Info
 } from "lucide-react";
-import { mockProducts, categories } from "@/data/products";
+import { useProduct } from "@/hooks/use-products";
+import { categories } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-// Extended mock data for the details page
-const mockProductDetails = {
-  ingredients: {
-    title: "100% 牛肝",
-    description: "源自美國本土牧場。無激素添加。經低溫冷凍乾燥處理以保留營養。不含任何人工防腐劑或填充物。",
-    tags: ["單一來源"]
-  },
-  supplyChain: {
-    rawMaterial: {
-      location: "美國",
-      verifications: [
-        { type: "官網資訊驗證", url: "#", verified: true },
-        { type: "客服回覆驗證", url: "#", verified: true }
-      ]
-    },
-    production: {
-      location: "美國",
-      verifications: [
-        { type: "包裝標籤驗證", url: "#", verified: true },
-        { type: "廠商實地審計報告", url: "#", verified: true }
-      ]
-    },
-    packaging: {
-      location: "美國",
-      verifications: [
-        { type: "包裝標籤驗證", url: "#", verified: true }
-      ]
-    }
-  },
-  timeline: [
-    { 
-      id: 1, 
-      date: "2023-10-15", 
-      title: "廠商實地審計報告", 
-      description: "年度第三方工廠審計，確認生產流程符合安全標準與勞工規範。",
-      type: "verified",
-      action: "檢視文件" 
-    },
-    { 
-      id: 2, 
-      date: "2023-09-12", 
-      title: "第三方化驗報告", 
-      description: "針對重金屬、沙門氏菌與大腸桿菌的檢驗報告，結果均為陰性。",
-      type: "verified",
-      action: "檢視文件" 
-    },
-    { 
-      id: 3, 
-      date: "2023-08-05", 
-      title: "包裝正反面相片", 
-      description: "最新批次的零售包裝實拍，包含批號與有效期限標示。",
-      type: "photo",
-      action: "檢視相片" 
-    }
-  ]
-};
+import { Loader2 } from "lucide-react";
 
 export default function ProductDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("evidence");
   
-  const product = mockProducts.find(p => p.id === params.id);
+  // params.id is the product id
+  const { data: product, isLoading, error } = useProduct(params.id as string);
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="container mx-auto py-20 text-center">
         <h1 className="text-2xl font-bold text-slate-900">找不到產品</h1>
@@ -107,7 +61,7 @@ export default function ProductDetailsPage() {
             <ChevronRight className="h-4 w-4 mx-2 text-slate-300" />
             <span className="cursor-pointer hover:text-blue-600 transition-colors">數據庫</span>
             <ChevronRight className="h-4 w-4 mx-2 text-slate-300" />
-            <span className="font-medium text-slate-900">{product.name}</span>
+            <span className="font-medium text-slate-900">{product.name_en}</span>
           </div>
         </div>
       </div>
@@ -126,17 +80,31 @@ export default function ProductDetailsPage() {
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">{product.brand}</span>
+                    <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">{product.brand?.name}</span>
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-2">{product.name}</h1>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">{product.name_en}</h1>
+                  {(product.specification || product.version_label) && (
+                    <div className="flex items-center gap-2 mb-2">
+                      {product.specification && (
+                        <Badge variant="outline" className="text-sm font-normal text-slate-500">
+                          {product.specification}
+                        </Badge>
+                      )}
+                      {product.version_label && (
+                        <Badge variant="outline" className="text-sm font-normal text-slate-500">
+                          {product.version_label}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100">
                       <ShieldCheck className="h-3 w-3 mr-1" />
-                      {product.evidenceCount} 份文件已驗證
+                      {product.evidence_count || 0} 份文件已驗證
                     </Badge>
                     <Badge variant="outline" className="text-slate-600 border-slate-200">
-                      {categories.find(c => c.value === product.category)?.label || product.category}
+                      {categories.find(c => c.value === product.category)?.label || product.category || "未分類"}
                     </Badge>
                   </div>
                 </div>
@@ -154,7 +122,7 @@ export default function ProductDetailsPage() {
               </div>
 
               <p className="text-slate-600 leading-relaxed max-w-3xl">
-                {product.description}
+                {product.origin_verbatim_text || "暫無描述"}
               </p>
             </div>
           </div>
@@ -171,14 +139,10 @@ export default function ProductDetailsPage() {
           
           <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
             <div className="flex items-center gap-3 mb-3">
-              <h3 className="text-xl font-bold text-slate-900">{mockProductDetails.ingredients.title}</h3>
-              {mockProductDetails.ingredients.tags.map(tag => (
-                <Badge key={tag} className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 font-normal">
-                  {tag}
-                </Badge>
-              ))}
+              <h3 className="text-xl font-bold text-slate-900">成分列表</h3>
+              {/* If we had parsed ingredients tags, we could map them here. For now, skipping tags. */}
             </div>
-            <p className="text-slate-600">{mockProductDetails.ingredients.description}</p>
+            <p className="text-slate-600">{product.ingredients_text || "暫無成分資訊"}</p>
           </div>
         </Card>
 
@@ -196,22 +160,10 @@ export default function ProductDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-3 space-y-1">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">原料產地</span>
-                <div className="text-2xl font-bold text-slate-900">{mockProductDetails.supplyChain.rawMaterial.location}</div>
+                <div className="text-2xl font-bold text-slate-900">{product.raw_material_origin || "未標示"}</div>
               </div>
-              <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mockProductDetails.supplyChain.rawMaterial.verifications.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-emerald-200 hover:shadow-sm transition-all group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-emerald-100 p-1 rounded-full">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm">{item.type}</span>
-                    </div>
-                    <a href={item.url} className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      查看 <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </div>
-                ))}
+              <div className="md:col-span-9">
+                <p className="text-sm text-slate-500 italic">驗證資料準備中...</p>
               </div>
             </div>
 
@@ -221,22 +173,10 @@ export default function ProductDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-3 space-y-1">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">生產地</span>
-                <div className="text-2xl font-bold text-slate-900">{mockProductDetails.supplyChain.production.location}</div>
+                <div className="text-2xl font-bold text-slate-900">{product.factory_location || "未標示"}</div>
               </div>
-              <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mockProductDetails.supplyChain.production.verifications.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-emerald-200 hover:shadow-sm transition-all group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-emerald-100 p-1 rounded-full">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm">{item.type}</span>
-                    </div>
-                    <a href={item.url} className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      查看 <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </div>
-                ))}
+              <div className="md:col-span-9">
+                <p className="text-sm text-slate-500 italic">驗證資料準備中...</p>
               </div>
             </div>
 
@@ -246,22 +186,10 @@ export default function ProductDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-3 space-y-1">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">包裝地</span>
-                <div className="text-2xl font-bold text-slate-900">{mockProductDetails.supplyChain.packaging.location}</div>
+                <div className="text-2xl font-bold text-slate-900">{product.factory_location || "未標示"}</div>
               </div>
-              <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mockProductDetails.supplyChain.packaging.verifications.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-emerald-200 hover:shadow-sm transition-all group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-emerald-100 p-1 rounded-full">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm">{item.type}</span>
-                    </div>
-                    <a href={item.url} className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      查看 <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </div>
-                ))}
+              <div className="md:col-span-9">
+                 <p className="text-sm text-slate-500 italic">驗證資料準備中...</p>
               </div>
             </div>
           </div>
@@ -305,41 +233,42 @@ export default function ProductDetailsPage() {
           <div className="p-8">
             {activeTab === "evidence" && (
               <div className="space-y-6">
-                {mockProductDetails.timeline.map((item, index) => (
-                  <div key={item.id} className="relative pl-8 pb-8 last:pb-0">
-                    {/* Line */}
-                    {index !== mockProductDetails.timeline.length - 1 && (
-                      <div className="absolute left-[11px] top-3 bottom-0 w-px bg-slate-200" />
-                    )}
-                    
-                    {/* Dot */}
-                    <div className={cn(
-                      "absolute left-0 top-1 h-6 w-6 rounded-full border-4 border-white shadow-sm z-10",
-                      item.type === "verified" ? "bg-emerald-500" : "bg-blue-400"
-                    )} />
-
-                    <div className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
-                        <div className="flex items-center gap-3">
-                          {item.type === "verified" ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100">已驗證</Badge>
-                          ) : (
-                            <Badge className="bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100">相片</Badge>
-                          )}
-                          <span className="text-sm text-slate-400 font-medium">{item.date}</span>
-                        </div>
-                      </div>
-
-                      <h4 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h4>
-                      <p className="text-slate-600 mb-4">{item.description}</p>
+                {product.evidence_documents && product.evidence_documents.length > 0 ? (
+                  product.evidence_documents.map((doc, index) => (
+                    <div key={doc.id} className="relative pl-8 pb-8 last:pb-0">
+                      {/* Line */}
+                      {index !== (product.evidence_documents?.length || 0) - 1 && (
+                        <div className="absolute left-[11px] top-3 bottom-0 w-px bg-slate-200" />
+                      )}
                       
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6">
-                        {item.type === "verified" ? <FileText className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                        {item.action}
-                      </Button>
+                      {/* Dot */}
+                      <div className={cn(
+                        "absolute left-0 top-1 h-6 w-6 rounded-full border-4 border-white shadow-sm z-10 bg-emerald-500"
+                      )} />
+
+                      <div className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100">已驗證</Badge>
+                            <span className="text-sm text-slate-400 font-medium">{new Date(doc.updated_at || "").toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        <h4 className="text-lg font-bold text-slate-900 mb-2">{doc.file_name || "文件"}</h4>
+                        <p className="text-slate-600 mb-4">{doc.doc_type || "未分類文件"}</p>
+                        
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6">
+                           <FileText className="h-4 w-4 mr-2" />
+                          檢視文件
+                        </Button>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                   <div className="text-center py-12 text-slate-500">
+                    暫無證據文件
                   </div>
-                ))}
+                )}
               </div>
             )}
             
